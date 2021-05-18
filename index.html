@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traktor 3 Playlist Converter</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.2/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    .fullheight {
+      height: 100vh;
+    }
+    .has-text-center {
+      text-align: center;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+</head>
+<body class="container fullheight mt-3 is-flex is-flex-direction-column is-justify-content-space-between">
+  <header class="has-text-center">
+    <h1 class="title">
+      Traktor 3 Playlist Converter
+    </h1>
+    <h3 class="subtitle">
+      Converts html playlist to plain text.
+    </h3>
+  </header>
+  <main x-data="playlistConverter()">
+    <section class="is-flex is-flex-direction-column is-align-items-center">
+      <div class="file has-name is-boxed is-large is-info">
+        <label class="file-label">
+          <input class="file-input" type="file" name="playlist" @change="playlistSelected">
+          <span class="file-cta">
+            <span class="file-icon">
+              <i class="fas fa-upload"></i>
+            </span>
+            <span class="file-label">
+              Select Playlist …
+            </span>
+          </span>
+          <span class="file-name has-text-center" x-text="fileName"></span>
+        </label>
+      </div>
+    </section>
+    <section :class="{ 'is-hidden': ! converted }">
+      <div class="is-flex is-align-items-right">
+        <div>
+          <button class="button mr-1" @click="copyText">Copy</button>
+          <button class="button is-primary" @click="saveAs">Save</button>
+        </div>
+      </div>
+      <pre 
+        id="playlistAsText" 
+        class="box mt-4" 
+        x-html="playlistAsText"
+      >
+      </pre>
+    </section>
+  </main>
+  <footer class="footer mt-2 has-text-center">
+    A free tool created by Matt H. for CavalryIT &copy;2021
+  </footer>
+  <script>
+    function playlistConverter() {
+      return {
+        converted: false,
+        fileName: "Selected File Name",
+        playlist: null,
+        playlistAsText: "",
+        playlistSelected(e) {
+          this.playlist = e.target.files[0]
+          this.fileName = this.playlist.name
+          this.processFile()
+
+        },
+        processFile() {
+          let reader = new FileReader()
+
+          reader.onload = e => this.playlistAsText = this.convertToText(e.target.result)
+          reader.onloadend = () => this.converted = true
+
+          reader.readAsText(this.playlist)
+        
+        },
+        copyText() {
+          let copyText = document.createElement("textarea")
+          copyText.value = this.playlistAsText
+          
+          // Avoid scrolling to bottom
+          copyText.style.top = "0"
+          copyText.style.left = "0"
+          copyText.style.position = "fixed"
+
+          document.body.appendChild(copyText)
+          copyText.focus()
+          copyText.select()
+
+          try {
+            let successful = document.execCommand('copy')
+            let msg = successful ? 'successful' : 'unsuccessful'
+            console.log('Copying text command was ' + msg)
+          } catch (err) {
+            console.error('Oops, unable to copy', err)
+          }
+
+          document.body.removeChild(copyText)
+        },
+        saveAs() {
+          const a = document.createElement('a')
+          
+          a.href= URL.createObjectURL(new Blob([this.playlistAsText], {type: "text/plain"}))
+          a.download = this.fileName.replace("html", "txt")
+          a.click();
+
+          URL.revokeObjectURL(a.href)
+
+        },
+        convertToText(playlist) {
+          let doc = (new DOMParser()).parseFromString(playlist, "text/html")
+          const trackListName = doc.getElementsByTagName('h1')[0].childNodes[0].nodeValue
+          // var HTMLCollection
+          const tracks = doc.getElementsByTagName('table')[0].getElementsByTagName('tr')
+          let tracklist = []
+
+          
+          for(let o = 0; o < tracks.length; o++) {
+            let row = tracks[o].cells
+            let tk = []
+            
+            for(let i = 0; i < row.length; i++) {
+              tk.push(row[i].innerText)
+            }
+            
+            tracklist.push(tk.join(' - '))
+          }
+
+          return `${trackListName}
+
+${tracklist.join('\n')}
+`          
+        }
+      }
+    }
+  </script>
+</body>
+</html>
